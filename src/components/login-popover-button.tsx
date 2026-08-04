@@ -49,6 +49,7 @@ function LoginPopoverButton() {
           collectionId: pb.authStore.record.collectionId,
           collectionName: pb.authStore.record.collectionName,
           autoSkip: pb.authStore.record.autoSkip,
+          created: pb.authStore.record.created,
         });
       }
     } catch (e) {
@@ -130,6 +131,7 @@ function LoginPopoverButton() {
         collectionId: pb.authStore.record.collectionId,
         collectionName: pb.authStore.record.collectionName,
         autoSkip: pb.authStore.record.autoSkip,
+        created: pb.authStore.record.created,
       });
     }
   };

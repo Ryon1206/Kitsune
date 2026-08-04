@@ -22,11 +22,15 @@ export interface Entry {
 
 export interface Media {
   id: number;
-  bannerImage: string;
-  idMal: number;
-  title: Title;
-}
-
-export interface Title {
-  english: string;
+  bannerImage?: string;
+  coverImage?: {
+    extraLarge?: string;
+    large?: string;
+  };
+  idMal?: number;
+  title: {
+    english?: string | null;
+    romaji?: string | null;
+    native?: string | null;
+  };
 }

@@ -1,11 +1,14 @@
 import { pb } from "@/lib/pocketbase";
 import { useAuthStore } from "@/store/auth-store";
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "react-query";
 import { toast } from "sonner";
+
+export const GET_BOOKMARKS_KEY = "GET_BOOKMARKS";
 
 type Props = {
   animeID?: string;
   status?: string;
+  userId?: string;
   page?: number;
   per_page?: number;
   populate?: boolean;
@@ -28,7 +31,7 @@ export type WatchHistory = {
   id: string;
   current: number;
   timestamp: number;
-  episodeId: string;
+  episodeId?: string;
   episodeNumber: number;
   created: string;
 };
@@ -36,16 +39,21 @@ export type WatchHistory = {
 function useBookMarks({
   animeID,
   status,
-  page,
-  per_page,
+  userId,
+  page = 1,
+  per_page = 20,
   populate = true,
 }: Props) {
   const { auth } = useAuthStore();
-  const [bookmarks, setBookmarks] = useState<Bookmark[] | null>(null);
-  const [totalPages, setTotalPages] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const targetUserId = userId || auth?.id;
 
   const filterParts = [];
+
+  if (targetUserId) {
+    filterParts.push(`user='${targetUserId}'`);
+  }
 
   if (animeID) {
     filterParts.push(`animeId='${animeID}'`);
@@ -57,35 +65,30 @@ function useBookMarks({
 
   const filters = filterParts.join(" && ");
 
-  useEffect(() => {
-    if (!populate) return;
-    const getBookmarks = async () => {
-      try {
-        setIsLoading(true);
-        const res = await pb
-          .collection<Bookmark>("bookmarks")
-          .getList(page, per_page, {
-            filter: filters,
-            expand: "watchHistory",
-            sort: "-updated",
-          });
+  const { data, isLoading } = useQuery({
+    queryKey: [GET_BOOKMARKS_KEY, { animeID, status, page, per_page, userId: targetUserId }],
+    queryFn: async () => {
+      const res = await pb
+        .collection<Bookmark>("bookmarks")
+        .getList(page, per_page, {
+          filter: filters,
+          expand: "watchHistory",
+          sort: "-updated",
+          requestKey: null,
+        });
 
-        if (res.totalItems > 0) {
-          const bookmark = res.items;
-          setTotalPages(res.totalPages);
-          setBookmarks(bookmark);
-        } else {
-          setBookmarks(null);
-        }
-        setIsLoading(false);
-      } catch (error) {
-        setIsLoading(false);
-        console.log(error);
-      }
-    };
+      return {
+        bookmarks: res.items.length > 0 ? res.items : null,
+        totalPages: res.totalPages,
+      };
+    },
+    enabled: populate && !!auth,
+    staleTime: 1000 * 60 * 5, // Cache results for 5 minutes
+    refetchOnWindowFocus: false, // Prevent refetching when switching tabs
+  });
 
-    getBookmarks();
-  }, [animeID, status, page, per_page, filters, auth, populate]);
+  const bookmarks = data?.bookmarks ?? null;
+  const totalPages = data?.totalPages ?? 0;
 
   const createOrUpdateBookMark = async (
     animeID: string,
@@ -100,7 +103,10 @@ function useBookMarks({
     try {
       const res = await pb.collection<Bookmark>("bookmarks").getList(1, 1, {
         filter: `animeId='${animeID}'`,
+        requestKey: null,
       });
+
+      let bookmarkId: string;
 
       if (res.totalItems > 0) {
         if (res.items[0].status === status) {
@@ -124,7 +130,7 @@ function useBookMarks({
           });
         }
 
-        return updated.id;
+        bookmarkId = updated.id;
       } else {
         const created = await pb.collection<Bookmark>("bookmarks").create({
           user: auth.id,
@@ -140,8 +146,12 @@ function useBookMarks({
           });
         }
 
-        return created.id;
+        bookmarkId = created.id;
       }
+
+      // Invalidate bookmark queries so React Query updates smoothly
+      queryClient.invalidateQueries(GET_BOOKMARKS_KEY);
+      return bookmarkId;
     } catch (error) {
       console.log(error);
       return null;
@@ -152,7 +162,7 @@ function useBookMarks({
     bookmarkId: string | null,
     watchedRecordId: string | null,
     episodeData: {
-      episodeId: string;
+      episodeId?: string;
       episodeNumber: number;
       current: number;
       duration: number;
@@ -160,17 +170,21 @@ function useBookMarks({
   ): Promise<string | null> => {
     if (!pb.authStore.isValid || !bookmarkId) return watchedRecordId;
 
-    const dataToSave = {
-      episodeId: episodeData.episodeId,
+    const dataToSave: Record<string, any> = {
       episodeNumber: episodeData.episodeNumber,
-      current: Math.round(episodeData.current), // Store as integer seconds
-      timestamp: Math.round(episodeData.duration), // Use 'timestamp' field for duration
+      current: Math.round(episodeData.current),
+      timestamp: Math.round(episodeData.duration),
     };
 
+    if (episodeData.episodeId) {
+      dataToSave.episodeId = episodeData.episodeId;
+    }
+
     try {
+      let resultRecordId: string | null = null;
       if (watchedRecordId) {
         await pb.collection("watched").update(watchedRecordId, dataToSave);
-        return watchedRecordId;
+        resultRecordId = watchedRecordId;
       } else {
         const newWatchedRecord = await pb
           .collection("watched")
@@ -180,6 +194,7 @@ function useBookMarks({
           await pb.collection("bookmarks").update(bookmarkId, {
             "watchHistory+": newWatchedRecord.id,
           });
+          resultRecordId = newWatchedRecord.id;
         } catch (error) {
           console.error(
             "Error updating bookmark with new watch record:",
@@ -187,8 +202,11 @@ function useBookMarks({
           );
           return null;
         }
-        return newWatchedRecord.id;
       }
+
+      // Invalidate bookmark cache
+      queryClient.invalidateQueries(GET_BOOKMARKS_KEY);
+      return resultRecordId;
     } catch (error) {
       console.error("Error syncing watch progress:", error);
       return watchedRecordId;

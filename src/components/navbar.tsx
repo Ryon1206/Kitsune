@@ -68,6 +68,7 @@ const NavBar = () => {
               collectionId: user.record.collectionId,
               collectionName: user.record.collectionName,
               autoSkip: user.record.autoSkip,
+              created: user.record.created,
             });
           }
         } catch (e) {

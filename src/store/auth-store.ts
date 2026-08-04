@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -9,6 +10,7 @@ export type IAuth = {
   collectionId: string;
   collectionName: string;
   autoSkip: boolean;
+  created?: string;
 };
 
 export interface IAuthStore {
@@ -39,5 +41,19 @@ export const useAuthStore = create<IAuthStore>()(
 );
 
 export const useAuthHydrated = () => {
-  return useAuthStore.persist.hasHydrated();
+  const [hydrated, setHydrated] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsubHydrate = useAuthStore.persist?.onHydrate(() => setHydrated(false));
+    const unsubFinish = useAuthStore.persist?.onFinishHydration(() => setHydrated(true));
+
+    setHydrated(useAuthStore.persist?.hasHydrated() ?? true);
+
+    return () => {
+      unsubHydrate?.();
+      unsubFinish?.();
+    };
+  }, []);
+
+  return hydrated;
 };

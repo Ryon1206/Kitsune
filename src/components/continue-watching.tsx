@@ -52,17 +52,22 @@ const ContinueWatching = (props: Props) => {
       }
     } else {
       if (bookmarks && bookmarks.length > 0) {
-        const animes = bookmarks.map((anime) => ({
-          id: anime.animeId,
-          name: anime.animeTitle,
-          poster: anime.thumbnail,
-          episode: anime.expand.watchHistory
-            ? anime.expand.watchHistory.sort(
-              (a, b) => b.episodeNumber - a.episodeNumber,
-            )[0]
-            : null,
-        }));
-        setAnime(animes as WatchedAnime[]);
+        const animes = bookmarks
+          .map((anime) => ({
+            id: anime.animeId,
+            name: anime.animeTitle,
+            poster: anime.thumbnail,
+            episode: anime.expand?.watchHistory
+              ? anime.expand.watchHistory.sort(
+                  (a, b) => b.episodeNumber - a.episodeNumber,
+                )[0]
+              : null,
+          }))
+          .filter((item) => !!item.episode);
+
+        setAnime(animes.length > 0 ? (animes as WatchedAnime[]) : null);
+      } else {
+        setAnime(null);
       }
     }
   }, [auth, bookmarks]);
@@ -86,7 +91,7 @@ const ContinueWatching = (props: Props) => {
                   title={ani.name}
                   poster={ani.poster}
                   className="self-center justify-self-center"
-                  href={`${ROUTES.WATCH}?anime=${ani.id}&episode=${typeof ani.episode !== "string" ? ani.episode.episodeId : ani.episode}`}
+                  href={`${ROUTES.WATCH}?anime=${ani.id}&ep=${typeof ani.episode !== "string" ? ani.episode.episodeNumber : 1}`}
                   watchDetail={
                     typeof ani.episode !== "string" ? ani.episode : null
                   }

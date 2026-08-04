@@ -8,6 +8,8 @@ export interface Episode {
   episodeId: string;
   number: number;
   isFiller: boolean;
+  hasSub?: boolean;
+  hasDub?: boolean;
 }
 
 export interface IEpisodeSource {

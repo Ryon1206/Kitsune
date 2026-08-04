@@ -215,14 +215,11 @@ const SearchResults = () => {
           <BlurFade key={idx} delay={idx * 0.05} inView>
             <AnimeCard
               title={anime.name}
-              subTitle={anime.type}
+              format={anime.type}
               poster={anime.poster}
               href={`${ROUTES.ANIME_DETAILS}/${anime.id}`}
               className="self-center justify-self-center"
               showGenre={false}
-              episodeCard
-              sub={anime?.episodes?.sub}
-              dub={anime?.episodes?.dub}
             />
           </BlurFade>
         ))}
