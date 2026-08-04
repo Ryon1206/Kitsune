@@ -181,10 +181,31 @@ function useBookMarks({
     }
 
     try {
-      let resultRecordId: string | null = null;
-      if (watchedRecordId) {
-        await pb.collection("watched").update(watchedRecordId, dataToSave);
-        resultRecordId = watchedRecordId;
+      let targetRecordId: string | null = watchedRecordId;
+
+      // Deduplication: If no in-memory record ID, check if a watched record for this episode already exists in PocketBase
+      if (!targetRecordId) {
+        try {
+          const bookmarkRecord = await pb.collection<Bookmark>("bookmarks").getOne(bookmarkId, {
+            expand: "watchHistory",
+            requestKey: null,
+          });
+          const existingHistory = bookmarkRecord.expand?.watchHistory || [];
+          const existingEpRecord = existingHistory.find(
+            (w) => w.episodeNumber === episodeData.episodeNumber
+          );
+          if (existingEpRecord) {
+            targetRecordId = existingEpRecord.id;
+          }
+        } catch (e) {
+          console.warn("Could not check existing watch history:", e);
+        }
+      }
+
+      if (targetRecordId) {
+        await pb.collection("watched").update(targetRecordId, dataToSave);
+        queryClient.invalidateQueries(GET_BOOKMARKS_KEY);
+        return targetRecordId;
       } else {
         const newWatchedRecord = await pb
           .collection("watched")
@@ -194,7 +215,8 @@ function useBookMarks({
           await pb.collection("bookmarks").update(bookmarkId, {
             "watchHistory+": newWatchedRecord.id,
           });
-          resultRecordId = newWatchedRecord.id;
+          queryClient.invalidateQueries(GET_BOOKMARKS_KEY);
+          return newWatchedRecord.id;
         } catch (error) {
           console.error(
             "Error updating bookmark with new watch record:",
@@ -203,10 +225,6 @@ function useBookMarks({
           return null;
         }
       }
-
-      // Invalidate bookmark cache
-      queryClient.invalidateQueries(GET_BOOKMARKS_KEY);
-      return resultRecordId;
     } catch (error) {
       console.error("Error syncing watch progress:", error);
       return watchedRecordId;
