@@ -35,6 +35,7 @@ interface ArtPlayerProps extends HTMLAttributes<HTMLDivElement> {
   getInstance?: (art: Artplayer) => void; // Callback to get the instance
   autoSkip?: boolean;
   serversData: IEpisodeServers;
+  onError?: () => void;
 }
 
 // --- Helper to generate highlights ---
@@ -63,6 +64,7 @@ function KitsunePlayer({
   getInstance,
   autoSkip = true,
   serversData,
+  onError,
   ...rest // Spread other div attributes like className, id, etc.
 }: ArtPlayerProps): JSX.Element {
   const artContainerRef = useRef<HTMLDivElement>(null); // Ref for the mounting div
@@ -89,21 +91,14 @@ function KitsunePlayer({
     setIsAutoSkipEnabled(autoSkip);
   }, [autoSkip]);
 
-  const proxyBaseURI = `${env("NEXT_PUBLIC_PROXY_URL")}/m3u8-proxy`;
-
-  // --- Construct Proxy URI ---
+  // --- Construct Stream URI via Next.js internal /api/proxy ---
   const uri = useMemo(() => {
     const firstSourceUrl = episodeInfo?.sources?.[0]?.url;
+    if (!firstSourceUrl) return null;
     const referer = episodeInfo?.headers?.Referer;
-    if (!firstSourceUrl || !referer) return null;
-
-    try {
-      const url = encodeURIComponent(firstSourceUrl);
-      return `${proxyBaseURI}?url=${url}&referer=${referer}`;
-    } catch (error) {
-      console.error("Error constructing proxy URI:", error);
-      return null;
-    }
+    const encodedUrl = encodeURIComponent(firstSourceUrl);
+    const refererParam = referer ? `&referer=${encodeURIComponent(referer)}` : "";
+    return `/api/proxy?url=${encodedUrl}${refererParam}`;
   }, [episodeInfo]);
 
   const skipTimesRef = useRef<{
@@ -161,8 +156,11 @@ function KitsunePlayer({
         const history = expandedBookmark.expand?.watchHistory as
           | any[]
           | undefined;
+        const currentEpNo = parseInt(serversData.episodeNo);
         const existingWatched = history?.find(
-          (watched: any) => watched.episodeId === serversData.episodeId,
+          (watched: any) =>
+            (currentEpNo && Number(watched.episodeNumber) === currentEpNo) ||
+            (watched.episodeId && watched.episodeId === serversData.episodeId),
         );
 
         if (existingWatched) {
@@ -243,34 +241,35 @@ function KitsunePlayer({
 
     // Subtitle Track Selector Options
     const trackOptions: any = (episodeInfo?.subtitles ?? []).map((track) => ({
-      default: track.lang === "English", // Example default logic
+      default: track.lang === "English" || track.lang === "en",
       html: track.lang,
-      url: `${proxyBaseURI}?url=${encodeURIComponent(track.url)}`,
+      url: track.url,
     }));
 
-    const defaultTrack = episodeInfo?.subtitles?.find(
-      (track) => track.lang === "English",
-    )?.url;
+    const defaultTrack =
+      episodeInfo?.subtitles?.find(
+        (track) => track.lang === "English" || track.lang === "en",
+      )?.url || episodeInfo?.subtitles?.[0]?.url;
+
+    const defaultTrackProxyUrl = defaultTrack
+      ? `/api/proxy?url=${encodeURIComponent(defaultTrack)}`
+      : undefined;
 
     // Direct Subtitle Option based on subOrDub
     const subtitleConfig: Option["subtitle"] =
-      subOrDub === "sub"
+      subOrDub === "sub" && defaultTrackProxyUrl
         ? {
-          url: `${defaultTrack
-              ? `${proxyBaseURI}?url=${encodeURIComponent(defaultTrack)}`
-              : ""
-            }`,
-          type: "vtt",
-          style: {
-            // Example styles
-            color: "#FFFFFF",
-            fontSize: "22px", // Base size, will be adjusted
-            textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
-          },
-          encoding: "utf-8",
-          escape: false, // Allow potential styling tags in VTT
-        }
-        : {}; // Explicitly hide if 'dub'
+            url: defaultTrackProxyUrl,
+            type: "vtt",
+            style: {
+              color: "#FFFFFF",
+              fontSize: "22px",
+              textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
+            },
+            encoding: "utf-8",
+            escape: false,
+          }
+        : {};
 
     const manualSkipControl = {
       name: "manual-skip", // Unique name
@@ -351,18 +350,20 @@ function KitsunePlayer({
             const hls = new Hls();
             hls.loadSource(url);
             hls.attachMedia(videoElement);
+            hls.on(Hls.Events.ERROR, (event, data) => {
+              if (data.fatal) {
+                console.error("Fatal HLS error encountered:", data);
+                if (onError) onError();
+              }
+            });
             hlsInstanceRef.current = hls; // Store ref
             currentHlsInstanceForCleanup = hls; // Store for cleanup
             // Make sure HLS instance is destroyed when ArtPlayer instance is destroyed
             artPlayerInstance.on("destroy", () => {
               if (hlsInstanceRef.current === hls) {
-                // Check if it's the same instance
                 hls.destroy();
                 hlsInstanceRef.current = null;
                 currentHlsInstanceForCleanup = null;
-                console.log(
-                  "HLS instance destroyed via ArtPlayer destroy event.",
-                );
               }
             });
           } else if (
@@ -425,14 +426,14 @@ function KitsunePlayer({
             ...trackOptions, // Add subtitle track choices
           ],
           onSelect: function(item: any) {
-            // Type the item
             if (item.url && typeof item.url === "string") {
-              art.subtitle.switch(`${proxyBaseURI}?url=${item.url}`, {
+              const proxiedUrl = `/api/proxy?url=${encodeURIComponent(item.url)}`;
+              art.subtitle.switch(proxiedUrl, {
                 name: item.html,
               });
               return item.html ?? "Subtitle";
             }
-            return item.html ?? "Subtitle"; // Return name for display
+            return item.html ?? "Subtitle";
           },
         },
       ],
@@ -656,10 +657,7 @@ function KitsunePlayer({
         "Reconnect attempt:",
         reconnectTime,
       );
-      // Optionally show a user-friendly message
-      if (artInstanceRef.current) {
-        artInstanceRef.current.notice.show = `Error: ${error.message || "Playback failed"}`;
-      }
+      if (onError) onError();
     });
 
     art.on("video:timeupdate", handleTimeUpdate);

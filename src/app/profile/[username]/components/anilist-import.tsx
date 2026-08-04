@@ -52,6 +52,23 @@ function AnilistImport() {
     setIsLoading(false);
   };
 
+  const mapAnilistStatusToPocketbase = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "CURRENT":
+        return "watching";
+      case "COMPLETED":
+        return "completed";
+      case "PAUSED":
+        return "on_hold";
+      case "DROPPED":
+        return "dropped";
+      case "PLANNING":
+        return "plan_to_watch";
+      default:
+        return "watching";
+    }
+  };
+
   const onSubmitStepTwo = async () => {
     if (animes.length === 0) {
       toast.warning("No animes to import", {
@@ -62,30 +79,39 @@ function AnilistImport() {
     setIsLoading(true);
 
     try {
-      const { data } = await api.post("/api/import/anilist", {
-        animes,
-      });
-      if (!data || !data.animes) {
-        toast.error("No anime found", {
-          style: { background: "red" },
-        });
-        setIsLoading(false);
-        return;
+      let importedCount = 0;
+
+      for (const list of animes) {
+        const pbStatus = mapAnilistStatusToPocketbase(list.status || list.name);
+
+        for (const entry of list.entries || []) {
+          const media = entry.media;
+          if (!media || !media.id) continue;
+
+          const animeId = String(media.id);
+          const animeTitle =
+            media.title?.english ||
+            media.title?.romaji ||
+            media.title?.native ||
+            "Untitled";
+          const thumbnail =
+            media.coverImage?.extraLarge ||
+            media.coverImage?.large ||
+            media.bannerImage ||
+            "";
+
+          await bookmark.createOrUpdateBookMark(
+            animeId,
+            animeTitle,
+            thumbnail,
+            pbStatus,
+            false,
+          );
+          importedCount++;
+        }
       }
 
-      // update in pb
-      const animeList = data.animes;
-      for (const anime of animeList) {
-        await bookmark.createOrUpdateBookMark(
-          anime.id,
-          anime.title,
-          anime.thumbnail,
-          anime.status,
-          false,
-        );
-      }
-
-      toast.success("Anilist anime imported successfully", {
+      toast.success(`Successfully imported ${importedCount} anime from AniList!`, {
         style: { background: "green" },
       });
       setOpen(false);

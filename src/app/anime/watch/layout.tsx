@@ -25,6 +25,7 @@ import { IAnime } from "@/types/anime";
 import useBookMarks from "@/hooks/use-get-bookmark";
 import { toast } from "sonner";
 import { useGetAllEpisodes } from "@/query/get-all-episodes";
+import CommentsSection from "@/components/comments/comments-section";
 
 type Props = {
   children: ReactNode;
@@ -69,17 +70,16 @@ const Layout = (props: Props) => {
   );
   const episodeId = searchParams.get("episode");
 
+  const epNumberParam = searchParams.get("ep");
+  const currentEpNum = epNumberParam ? Number(epNumberParam) : 1;
+
   const [animeId, setAnimeId] = useState<string | null>(currentAnimeId);
 
   useEffect(() => {
     if (currentAnimeId !== animeId) {
       setAnimeId(currentAnimeId);
     }
-
-    if (episodeId) {
-      setSelectedEpisode(episodeId);
-    }
-  }, [currentAnimeId, episodeId, animeId, setSelectedEpisode]);
+  }, [currentAnimeId, animeId]);
 
   const { data: anime, isLoading } = useGetAnimeDetails(animeId as string);
 
@@ -90,20 +90,54 @@ const Layout = (props: Props) => {
   }, [anime, setAnime]);
 
   useEffect(() => {
-    if (!animeId) {
+    if (!animeId && typeof window !== "undefined") {
       router.push(ROUTES.HOME);
     }
-    //eslint-disable-next-line
-  }, [animeId]);
+  }, [animeId, router]);
 
   const { bookmarks, createOrUpdateBookMark } = useBookMarks({
     animeID: currentAnimeId as string,
     page: 1,
     per_page: 1,
   });
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState<string>("Plan to Watch");
+
+  useEffect(() => {
+    if (bookmarks?.[0]?.status) {
+      setSelected(bookmarks[0].status);
+    }
+  }, [bookmarks]);
+
+  const SelectOptions: ISelectOptions[] = [
+    {
+      label: "Watching",
+      value: "watching",
+      icon: TvMinimalPlay,
+    },
+    {
+      label: "Plan to watch",
+      value: "plan_to_watch",
+      icon: BookmarkCheck,
+    },
+    {
+      label: "On Hold",
+      value: "on_hold",
+      icon: Hand,
+    },
+    {
+      label: "Completed",
+      value: "completed",
+      icon: CheckCheck,
+    },
+    {
+      label: "Dropped",
+      value: "dropped",
+      icon: Ban,
+    },
+  ];
 
   const handleSelect = async (value: string) => {
+    if (!anime?.anime.info.name || !anime?.anime.info.poster) return;
     const previousSelected = selected;
     setSelected(value);
 
@@ -124,6 +158,27 @@ const Layout = (props: Props) => {
   const { data: episodes, isLoading: episodeLoading } = useGetAllEpisodes(
     animeId as string,
   );
+
+  // Auto-resolve episode ID if only episode number (ep) is in query or if no episode parameter exists
+  useEffect(() => {
+    if (episodes?.episodes?.length) {
+      if (episodeId) {
+        setSelectedEpisode(episodeId);
+      } else {
+        const epNum = epNumberParam ? Number(epNumberParam) : 1;
+        const matchedEp =
+          episodes.episodes.find((e) => e.number === epNum) || episodes.episodes[0];
+        if (matchedEp?.episodeId) {
+          setSelectedEpisode(matchedEp.episodeId);
+          if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            url.searchParams.set("episode", matchedEp.episodeId);
+            window.history.replaceState({}, "", url.toString());
+          }
+        }
+      }
+    }
+  }, [episodes, episodeId, epNumberParam, setSelectedEpisode]);
 
   if (isLoading) return <Loading />;
 
@@ -161,7 +216,7 @@ const Layout = (props: Props) => {
           <div className="flex flex-col gap-2">
             <Select
               placeholder="Add to list"
-              value={bookmarks?.[0]?.status || selected}
+              value={selected}
               options={SelectOptions}
               onChange={handleSelect}
             />
@@ -171,6 +226,14 @@ const Layout = (props: Props) => {
             <p>{parse(anime?.anime.info.description as string)}</p>
           </div>
         </div>
+
+        {/* Community Comments Section */}
+        <CommentsSection
+          animeId={animeId as string}
+          animeTitle={anime?.anime.info.name || "Anime"}
+          episodeNumber={currentEpNum}
+        />
+
         <AnimeCarousel
           title={"Also Watch"}
           anime={anime?.relatedAnimes as IAnime[]}

@@ -9,17 +9,23 @@ const getAnilistAnimes = async (username: string) => {
          MediaListCollection(type: ANIME, userName: $username) {
           lists {
             name
+            status
             entries {
               media {
                 id
                 bannerImage
+                coverImage {
+                  extraLarge
+                  large
+                }
                 idMal
                 title {
                   english
+                  romaji
+                  native
                 }
               }
             }
-            status
           }
         }
       }

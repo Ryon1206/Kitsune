@@ -36,8 +36,13 @@ function AnimeLists(props: Props) {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-gray-500">Loading...</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-10 w-full">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((idx) => (
+          <div
+            key={idx}
+            className="rounded-xl h-[15.625rem] min-w-[10.625rem] md:h-[18.75rem] animate-pulse bg-slate-800/80"
+          ></div>
+        ))}
       </div>
     );
   }
@@ -53,7 +58,7 @@ function AnimeLists(props: Props) {
             : null;
 
           const url = latestEpisode
-            ? `${ROUTES.WATCH}?anime=${bookmark.animeId}&episode=${latestEpisode.episodeId}`
+            ? `${ROUTES.WATCH}?anime=${bookmark.animeId}&ep=${latestEpisode.episodeNumber}`
             : `${ROUTES.ANIME_DETAILS}/${bookmark.animeId}`;
 
           return (

@@ -1,7 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 
+import parse from "html-react-parser";
 import Container from "@/components/container";
 import AnimeCard from "@/components/anime-card";
 
@@ -69,6 +70,12 @@ const Page = () => {
     per_page: 1,
   });
   const [selected, setSelected] = useState(bookmarks?.[0]?.status || "");
+
+  useEffect(() => {
+    if (bookmarks?.[0]?.status) {
+      setSelected(bookmarks[0].status);
+    }
+  }, [bookmarks]);
 
   const { data: banner, isLoading: bannerLoading } = useGetAnimeBanner(
     anime?.anime.info.anilistId!,
@@ -212,9 +219,9 @@ const Page = () => {
             </div>
             <div className="col-span-4 flex flex-col gap-5">
               <h3 className="text-xl font-semibold">Description</h3>
-              <p className="md:text-base text-xs leading-6">
-                {anime.anime.info.description}
-              </p>
+              <div className="md:text-base text-xs leading-6 text-gray-300">
+                {parse(anime.anime.info.description || "")}
+              </div>
             </div>
           </TabsContent>
 

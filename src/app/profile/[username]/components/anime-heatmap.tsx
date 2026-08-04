@@ -21,25 +21,30 @@ function AnimeHeatmap() {
   const [heatmapData, setHeatmapData] = useState<HeatmapValue[]>([]);
   const [totalContributionCount, setTotalContributionCount] =
     useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const startDate = new Date(new Date().setMonth(0, 1));
   const endDate = new Date(new Date().setMonth(11, 31));
 
   // --- Data Fetching and Aggregation ---
   const fetchAndAggregateWatchHistory = async () => {
-    if (!auth?.id) return; // Need authenticated user ID
+    if (!auth?.id) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
+      setIsLoading(true);
       // 1. Get all bookmark records for the user
       const bookmarkRecords = await pb
         .collection<BookmarkData>("bookmarks")
         .getFullList({
           filter: `user = "${auth.id}"`,
-          fields: "watchHistory", // Only fetch the relation IDs needed
+          fields: "watchHistory",
+          requestKey: null,
         });
 
       if (!bookmarkRecords || bookmarkRecords.length === 0) {
-        console.log("No bookmarks found for user.");
         setHeatmapData([]);
         setTotalContributionCount(0);
         return;
@@ -48,11 +53,9 @@ function AnimeHeatmap() {
       // 2. Collect all unique watched record IDs from all bookmarks
       const watchedRecordIds = bookmarkRecords.reduce(
         (acc: string[], bookmark) => {
-          // Ensure watchHistory is an array and add its IDs to accumulator
           if (Array.isArray(bookmark.watchHistory)) {
             bookmark.watchHistory.forEach((id) => {
               if (!acc.includes(id)) {
-                // Add only unique IDs
                 acc.push(id);
               }
             });
@@ -73,18 +76,18 @@ function AnimeHeatmap() {
         .join(" || ");
 
       try {
-        // 4. Fetch all corresponding 'watched' records
         const watchedRecords = await pb
           .collection<WatchHistory>("watched")
           .getFullList({
             filter: watchedFilter,
-            fields: "created", // Only need the creation date
+            fields: "created",
+            requestKey: null,
           });
         const dailyCounts: { [key: string]: number } = {};
         let totalCount = 0;
 
         watchedRecords.forEach((record) => {
-          const dateStr = record.created.substring(0, 10); // Extracts "YYYY-MM-DD"
+          const dateStr = record.created.substring(0, 10);
 
           if (dailyCounts[dateStr]) {
             dailyCounts[dateStr] += 1;
@@ -103,19 +106,25 @@ function AnimeHeatmap() {
 
         setHeatmapData(formattedData);
         setTotalContributionCount(totalCount);
-      } catch (error) {
-        console.error("Error fetching watched records:", error);
+      } catch (error: any) {
+        if (!error?.isAbort) {
+          console.error("Error fetching watched records:", error);
+        }
       }
-    } catch (error) {
-      console.error("Error fetching or aggregating watch history:", error);
-      toast.error("Failed to load watch activity.");
-      setHeatmapData([]); // Clear data on error
+    } catch (error: any) {
+      if (!error?.isAbort) {
+        console.error("Error fetching or aggregating watch history:", error);
+        toast.error("Failed to load watch activity.");
+      }
+      setHeatmapData([]);
       setTotalContributionCount(0);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!auth?.id) return; // Need authenticated user ID
+    if (!auth?.id) return;
     fetchAndAggregateWatchHistory();
   }, []);
 
@@ -142,7 +151,7 @@ function AnimeHeatmap() {
     value: HeatmapValue | null,
   ): Record<string, string> => {
     const val = value as HeatmapValue;
-    if (!val.date) {
+    if (!val?.date) {
       return {
         "data-tooltip-id": "heatmap-tooltip",
         "data-tooltip-content": "No episodes watched",
@@ -157,6 +166,15 @@ function AnimeHeatmap() {
       "data-tooltip-content": `Watched ${val.count} episodes on ${formatedDate}`,
     } as Record<string, string>;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-4 w-full py-4">
+        <div className="h-6 w-56 animate-pulse bg-slate-800 rounded-md"></div>
+        <div className="h-28 w-full animate-pulse bg-slate-800/80 rounded-xl border border-slate-800"></div>
+      </div>
+    );
+  }
 
   return (
     <>
