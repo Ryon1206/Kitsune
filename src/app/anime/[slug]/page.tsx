@@ -30,7 +30,6 @@ import Loading from "@/app/loading";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
 import useBookMarks from "@/hooks/use-get-bookmark";
-import { useGetAnimeBanner } from "@/query/get-banner-anime";
 
 const SelectOptions: ISelectOptions[] = [
   {
@@ -72,14 +71,11 @@ const Page = () => {
   const [selected, setSelected] = useState(bookmarks?.[0]?.status || "");
 
   useEffect(() => {
-    if (bookmarks?.[0]?.status) {
-      setSelected(bookmarks[0].status);
+    const currentStatus = bookmarks?.[0]?.status;
+    if (currentStatus && currentStatus !== selected) {
+      setSelected(currentStatus);
     }
-  }, [bookmarks]);
-
-  const { data: banner, isLoading: bannerLoading } = useGetAnimeBanner(
-    anime?.anime.info.anilistId!,
-  );
+  }, [bookmarks, selected]);
 
   const handleSelect = async (value: string) => {
     if (!auth) {
@@ -107,20 +103,16 @@ const Page = () => {
   ) : (
     <div className="w-full z-50">
       <div className="h-[30vh] md:h-[40vh] w-full relative ">
-        {bannerLoading ? (
-          <div className="absolute inset-0 m-auto w-full h-full bg-slate-900 animate-pulse"></div>
-        ) : (
-          <Image
-            src={
-              (banner?.Media.bannerImage as string) || anime.anime.info.poster
-            }
-            alt={anime.anime.info.name}
-            height={100}
-            width={100}
-            className="h-full w-full object-cover"
-            unoptimized
-          />
-        )}
+        <Image
+          src={
+            anime.anime.info.bannerImage || anime.anime.info.poster
+          }
+          alt={anime.anime.info.name}
+          height={100}
+          width={100}
+          className="h-full w-full object-cover"
+          unoptimized
+        />
 
         <WatchTrailer
           videoHref={anime.anime.info.promotionalVideos[0]?.source}
