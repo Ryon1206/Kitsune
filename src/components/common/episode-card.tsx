@@ -41,9 +41,10 @@ const EpisodeCard = ({
   );
 
   const isSelected =
-    (activeEpNum !== null && activeEpNum === props.episode.number) ||
-    selectedEpisode === props.episode.episodeId ||
-    (selectedEpisode && selectedEpisode.includes(`/${props.episode.number}`));
+    activeEpNum !== null
+      ? activeEpNum === props.episode.number
+      : selectedEpisode === props.episode.episodeId ||
+        (!!selectedEpisode && selectedEpisode.endsWith(`/${props.episode.number}`));
 
   if (showCard && variant === "card") {
     return (

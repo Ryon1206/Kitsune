@@ -31,12 +31,12 @@ const getEpisodeData = async (
   };
 };
 
-export const useGetEpisodeData = (episodeId: string) => {
+export const useGetEpisodeData = (episodeId: string, enabled: boolean = true) => {
   return useQuery({
     queryFn: () => getEpisodeData(episodeId),
     queryKey: [GET_EPISODE_DATA, episodeId],
     refetchOnWindowFocus: false,
-    enabled: !!episodeId,
+    enabled: !!episodeId && enabled,
   });
 };
 

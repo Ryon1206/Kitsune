@@ -22,23 +22,40 @@ import { useGetSourceAvailable } from "@/query/get-source-available";
 const VideoPlayerSection = () => {
   const searchParams = useSearchParams();
   const animeIdParam = searchParams.get("anime") || "";
+  const epParam = searchParams.get("ep");
   const episodeIdParam = searchParams.get("episode") || "";
   const { selectedEpisode, setSelectedEpisode, anime } = useAnimeStore();
 
   const { data: isSourceAvailable } = useGetSourceAvailable();
   const { data: allEpisodesData } = useGetAllEpisodes(animeIdParam);
 
-  // Fallback to first available episode if no episode selected
+  // Match episode number from ?ep= parameter if present
+  const targetEpByNumber = epParam && allEpisodesData?.episodes
+    ? allEpisodesData.episodes.find((e) => e.number === Number(epParam))
+    : null;
+
+  // Resolve active episode ID prioritizing ?ep= parameter
   const activeEpisodeId =
+    targetEpByNumber?.episodeId ||
     selectedEpisode ||
     episodeIdParam ||
     allEpisodesData?.episodes?.[0]?.episodeId ||
     "";
 
-  const { data: episodeData, isLoading: isLoadingData } =
-    useGetEpisodeData(activeEpisodeId);
+  // Sync selectedEpisode in store with ?ep= parameter if provided
+  useEffect(() => {
+    if (targetEpByNumber?.episodeId && selectedEpisode !== targetEpByNumber.episodeId) {
+      setSelectedEpisode(targetEpByNumber.episodeId);
+    }
+  }, [targetEpByNumber?.episodeId, selectedEpisode, setSelectedEpisode]);
+
+  const isPrimaryDisabled = isSourceAvailable === false;
 
   const [useFallback, setUseFallback] = useState<boolean>(false);
+
+  const { data: episodeData, isLoading: isLoadingData } =
+    useGetEpisodeData(activeEpisodeId, !isPrimaryDisabled && !useFallback);
+
   const [autoSkip, setAutoSkip] = useState<boolean>(true);
   const [preferredCategory, setPreferredCategory] = useState<"sub" | "dub">("sub");
 
