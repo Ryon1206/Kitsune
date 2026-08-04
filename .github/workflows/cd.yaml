@@ -27,6 +27,7 @@ jobs:
         with:
           envkey_NEXT_PUBLIC_PROXY_URL: ${{secrets.NEXT_PUBLIC_PROXY_URL}}
           envkey_NEXT_PUBLIC_POCKETBASE_URL: ${{secrets.NEXT_PUBLIC_POCKETBASE_URL}}
+          envkey_NEXT_PUBLIC_API_URL: ${{secrets.NEXT_PUBLIC_API_URL}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
