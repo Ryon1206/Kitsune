@@ -79,7 +79,7 @@ const fetchAniListEpisodesFallback = async (
 
 const getAllEpisodes = async (animeId: string): Promise<IEpisodesData> => {
   try {
-    const res = await api.get<EpisodeResponse>(`/episodes-ka/${animeId}`);
+    const res = await api.get<EpisodeResponse>(`/episodes/${animeId}`);
     const data = res.data;
 
     const providerNames = Object.keys(data.providers || {});
