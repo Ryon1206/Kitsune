@@ -16,7 +16,6 @@ import { IEpisodeServers, IEpisodeSource, IEpisodes } from "@/types/episodes"; /
 import loadingImage from "@/assets/genkai.gif"; // Adjust path as needed
 import artplayerPluginHlsControl from "artplayer-plugin-hls-control";
 import artplayerPluginAmbilight from "artplayer-plugin-ambilight";
-import { env } from "next-runtime-env"; // Ensure this works in client components or pass env vars differently
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import useBookMarks from "@/hooks/use-get-bookmark";

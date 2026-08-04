@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Attempt 1: Fetch with provided Referer and Origin
-    let fetchHeaders: Record<string, string> = {
+    const fetchHeaders: Record<string, string> = {
       ...baseHeaders,
       Referer: referer,
       Origin: origin,

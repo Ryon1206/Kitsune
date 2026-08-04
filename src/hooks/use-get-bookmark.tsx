@@ -8,6 +8,7 @@ export const GET_BOOKMARKS_KEY = "GET_BOOKMARKS";
 type Props = {
   animeID?: string;
   status?: string;
+  userId?: string;
   page?: number;
   per_page?: number;
   populate?: boolean;
@@ -38,6 +39,7 @@ export type WatchHistory = {
 function useBookMarks({
   animeID,
   status,
+  userId,
   page = 1,
   per_page = 20,
   populate = true,
@@ -45,7 +47,13 @@ function useBookMarks({
   const { auth } = useAuthStore();
   const queryClient = useQueryClient();
 
+  const targetUserId = userId || auth?.id;
+
   const filterParts = [];
+
+  if (targetUserId) {
+    filterParts.push(`user='${targetUserId}'`);
+  }
 
   if (animeID) {
     filterParts.push(`animeId='${animeID}'`);
@@ -58,7 +66,7 @@ function useBookMarks({
   const filters = filterParts.join(" && ");
 
   const { data, isLoading } = useQuery({
-    queryKey: [GET_BOOKMARKS_KEY, { animeID, status, page, per_page, authId: auth?.id }],
+    queryKey: [GET_BOOKMARKS_KEY, { animeID, status, page, per_page, userId: targetUserId }],
     queryFn: async () => {
       const res = await pb
         .collection<Bookmark>("bookmarks")

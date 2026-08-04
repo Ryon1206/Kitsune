@@ -6,13 +6,15 @@ import React from "react";
 
 type Props = {
   status: string;
+  userId?: string;
 };
 
-function AnimeLists(props: Props) {
+function AnimeLists({ status, userId }: Props) {
   const [currentPage, setPage] = React.useState(1);
 
   const { bookmarks, totalPages, isLoading } = useBookMarks({
-    status: props.status,
+    status: status,
+    userId: userId,
     page: currentPage,
     per_page: 8,
   });

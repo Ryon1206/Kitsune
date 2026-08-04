@@ -9,10 +9,9 @@ import {
 
 import Container from "./container";
 import { Button } from "./ui/button";
-import parse from "html-react-parser";
 
 import React from "react";
-import { ArrowLeft, ArrowRight, Captions, Mic } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { ButtonLink } from "./common/button-link";

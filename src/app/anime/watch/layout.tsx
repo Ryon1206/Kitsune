@@ -31,34 +31,6 @@ type Props = {
   children: ReactNode;
 };
 
-const SelectOptions: ISelectOptions[] = [
-  {
-    value: "plan to watch",
-    label: "Plan to Watch",
-    icon: BookmarkCheck,
-  },
-  {
-    value: "watching",
-    label: "Watching",
-    icon: TvMinimalPlay,
-  },
-  {
-    value: "completed",
-    label: "Completed",
-    icon: CheckCheck,
-  },
-  {
-    value: "on hold",
-    label: "On Hold",
-    icon: Hand,
-  },
-  {
-    value: "dropped",
-    label: "Dropped",
-    icon: Ban,
-  },
-];
-
 const Layout = (props: Props) => {
   const searchParams = useSearchParams();
   const { setAnime, setSelectedEpisode } = useAnimeStore();

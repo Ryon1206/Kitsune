@@ -4,7 +4,7 @@ import { IAnimeSchedule } from "@/types/anime-schedule";
 import { ScheduleItem, PaginatedResponse } from "@/types/miruro-api";
 import { useQuery } from "react-query";
 
-const getAnimeSchedule = async (date?: string): Promise<IAnimeSchedule> => {
+const getAnimeSchedule = async (): Promise<IAnimeSchedule> => {
   const res = await api.get<PaginatedResponse<ScheduleItem>>("/schedule");
   const items = res.data.results || [];
 
@@ -28,9 +28,9 @@ const getAnimeSchedule = async (date?: string): Promise<IAnimeSchedule> => {
   return { scheduledAnimes };
 };
 
-export const useGetAnimeSchedule = (date: string) => {
+export const useGetAnimeSchedule = (date?: string) => {
   return useQuery({
-    queryFn: () => getAnimeSchedule(date),
+    queryFn: () => getAnimeSchedule(),
     queryKey: [GET_ANIME_SCHEDULE, date],
   });
 };

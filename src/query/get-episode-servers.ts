@@ -5,7 +5,6 @@ import { useQuery } from "react-query";
 const getEpisodeServers = async (episodeId: string): Promise<IEpisodeServers> => {
   const parts = episodeId ? episodeId.split("/") : [];
   const currentProvider = parts[1] || "kiwi";
-  const category = parts[3] || "sub";
 
   return {
     episodeId: episodeId || "",

@@ -4,16 +4,12 @@ import React, { useEffect, useState } from "react";
 import { useAnimeStore } from "@/store/anime-store";
 import dynamic from "next/dynamic";
 
-import { IWatchedAnime } from "@/types/watched-anime";
 const KitsunePlayer = dynamic(() => import("@/components/kitsune-player"), {
   ssr: false,
 });
 import { useGetEpisodeData } from "@/query/get-episode-data";
-import { useGetEpisodeServers } from "@/query/get-episode-servers";
-import { getFallbackServer } from "@/utils/fallback-server";
 import { Captions, Mic, AlertCircle, Tv } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { useAuthStore } from "@/store/auth-store";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -45,7 +41,6 @@ const VideoPlayerSection = () => {
   const [useFallback, setUseFallback] = useState<boolean>(false);
   const [autoSkip, setAutoSkip] = useState<boolean>(true);
   const [preferredCategory, setPreferredCategory] = useState<"sub" | "dub">("sub");
-  const [watchedDetails, setWatchedDetails] = useState<Array<IWatchedAnime>>([]);
 
   const { createOrUpdateBookMark, syncWatchProgress } = useBookMarks({
     animeID: animeIdParam,
@@ -67,13 +62,6 @@ const VideoPlayerSection = () => {
     const storedCategory = localStorage.getItem("preferredCategory");
     if (storedCategory === "sub" || storedCategory === "dub") {
       setPreferredCategory(storedCategory);
-    }
-
-    try {
-      const stored = localStorage.getItem("watched");
-      setWatchedDetails(JSON.parse(stored as string) || []);
-    } catch {
-      localStorage.removeItem("watched");
     }
   }, []);
 

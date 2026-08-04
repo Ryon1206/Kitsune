@@ -10,6 +10,7 @@ export type IAuth = {
   collectionId: string;
   collectionName: string;
   autoSkip: boolean;
+  created?: string;
 };
 
 export interface IAuthStore {
